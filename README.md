@@ -1,285 +1,260 @@
-# Job Application Tracker (MERN Stack)
+# 💼 Job Application Tracker (MERN Stack)
 
-A clean, full-stack **Job Application Tracker** built with the **MERN** stack (MongoDB, Express.js, React.js, Node.js). It provides placement candidates and software engineers with an organized dashboard to track job applications, update application statuses across interview stages, filter and search by company name, and ensure complete user ownership and data isolation using JWT authentication and bcrypt password hashing.
+[![MERN Stack](https://img.shields.io/badge/Stack-MERN-blue.svg)](https://github.com/devjindall/JobApplicationTracker)
+[![React](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/Database-MongoDB%20%7C%20Mongoose-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![JWT Auth](https://img.shields.io/badge/Auth-JWT%20%7C%20Bcrypt-000000?logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A placement-ready, full-stack **Job Application Tracker** built with the **MERN** stack (MongoDB, Express.js, React.js, Node.js). Designed for software engineering candidates and placement applicants to organize job applications, track progress across interview stages, filter/search by company, and ensure complete data isolation with secure JWT authentication and password hashing.
+
+---
+
+## 📑 Table of Contents
+
+- [Key Features](#-key-features)
+- [System Architecture](#-system-architecture)
+- [Database Design & Indexing](#-database-design--indexing)
+- [API Reference](#-api-reference)
+- [Security & Authorization Architecture](#-security--authorization-architecture)
+- [Local Setup & MongoDB Compass](#-local-setup--mongodb-compass)
+- [Automated Verification Suite](#-automated-verification-suite)
+- [Engineering Decisions & Technical Interview Defense](#-engineering-decisions--technical-interview-defense)
 
 ---
 
 ## 🌟 Key Features
 
-1. **User Authentication & Security**:
-   - Secure account registration with client and server input validation.
-   - Passwords hashed using `bcryptjs` with salt rounds (plain passwords are never stored).
-   - Stateless JWT (JSON Web Token) authentication with 7-day expiration.
-   - `passwordHash` is stripped from all API outputs.
-   - Protected frontend routes and JWT verification middleware on protected backend endpoints.
+### 1. User Authentication & Session Security
+- **Registration & Login**: Secure account creation and credential validation.
+- **Bcrypt Password Hashing**: Passwords are salted (10 rounds) and hashed before persistence; plain text passwords are never stored.
+- **Stateless JWT Authorization**: Signed JSON Web Tokens with 7-day validity.
+- **Sensitive Field Protection**: `passwordHash` is stripped at the schema layer and never exposed in JSON responses.
 
-2. **Job Application Management (CRUD)**:
-   - **Create**: Add new job applications with company name, job role, status, applied date, job URL, and notes.
-   - **Read**: View all applications belonging strictly to the authenticated user.
-   - **Single View**: View detailed information of a specific application.
-   - **Update**: Edit application stage, dates, URLs, and notes.
-   - **Delete**: Remove applications with confirmation safeguards.
+### 2. Job Application Lifecycle (CRUD)
+- **Create**: Log company, role, stage, application date, job URL, and prep notes.
+- **Read**: Fetch applications strictly isolated to the authenticated user.
+- **Update**: Transition applications across interview stages and modify records.
+- **Delete**: Remove applications with confirmation dialogs.
 
-3. **Search & Status Filtering**:
-   - Case-insensitive search by company name via backend regex querying.
-   - Status filtering matching the 7 application stages:
-     - `Applied`
-     - `Resume Shortlisted`
-     - `OA Done`
-     - `Interview`
-     - `Waiting for Result`
-     - `Selected`
-     - `Rejected`
+### 3. Real-time Search & Multi-Stage Filtering
+- **Regex Company Search**: Case-insensitive instant search on company names.
+- **Status Filter**: Direct filtering matching all 7 standard recruitment stages:
+  `Applied` • `Resume Shortlisted` • `OA Done` • `Interview` • `Waiting for Result` • `Selected` • `Rejected`
 
-4. **Multi-User Isolation & Ownership Enforcement**:
-   - The backend extracts the user identity directly from `req.user.userId` via verified JWT.
-   - Never trusts client-supplied `userId`.
-   - Every read, update, and delete operation requires matching both `_id` and `userId`.
-
-5. **Client-Side Metrics Dashboard**:
-   - Real-time statistics dynamically computed from fetched application state:
-     - Total Applications
-     - In Progress
-     - Interviews
-     - Offers / Selected
-     - Rejected
-
----
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React.js (Hooks & Functional Components), Vite, Native `fetch` API, CSS3
-- **Backend**: Node.js, Express.js
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JSON Web Tokens (`jsonwebtoken`), `bcryptjs`
-- **Version Control**: Git & GitHub
+### 4. Client-Side Metrics Dashboard
+- Dynamic status counters computed directly from frontend state:
+  - **Total Applied**
+  - **In Progress** (`Applied`, `Resume Shortlisted`, `OA Done`, `Waiting for Result`)
+  - **Interviews**
+  - **Offers / Selected**
+  - **Rejected**
 
 ---
 
 ## 🏛️ System Architecture
 
 ```text
-┌────────────────────────────────────────────────────────┐
-│               React Frontend (Vite)                    │
-│   (Dashboard, ApplicationForm, Cards, Metrics, Auth)   │
-└───────────────────────────┬────────────────────────────┘
-                            │ HTTP (fetch) with Bearer JWT
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│               Express.js REST API Server               │
-│  - Routes (/api/auth, /api/applications)              │
-│  - JWT Auth Middleware (extracts req.user.userId)      │
-│  - Centralized Error Handling & Input Validation       │
-└───────────────────────────┬────────────────────────────┘
-                            │ Mongoose ODM Queries
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│                 MongoDB Database                       │
-│  - Users Collection                                    │
-│  - JobApplications Collection (indexed by userId)      │
-└────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    React.js Frontend (Vite)                     │
+│  - Dashboard & Metrics Cards (useMemo computed)                 │
+│  - Debounced Company Search & Status Dropdown                   │
+│  - Application Cards & Modal Form (Add / Edit)                  │
+│  - Centralized api.js (Auto Bearer Token Injection)             │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │ HTTP / JSON (Authorization: Bearer <JWT>)
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Express.js REST API Server                   │
+│  - /api/auth (Register, Login, Me)                              │
+│  - /api/applications (Protected CRUD Endpoints)                 │
+│  - JWT Middleware (Extracts & Validates req.user.userId)        │
+│  - Centralized Error & CastError Handling                       │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │ Mongoose ODM
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       MongoDB Database                          │
+│  - users Collection                                             │
+│  - jobapplications Collection (Compound Index: { userId, date })│
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🗄️ Database Design
+## 🗄️ Database Design & Indexing
 
-### 1. User Model (`User.js`)
-| Field | Type | Attributes | Description |
-| :--- | :--- | :--- | :--- |
-| `_id` | ObjectId | Auto-generated | Unique identifier |
-| `username` | String | Required, trimmed, minlength: 2 | User's display name |
-| `email` | String | Required, unique, lowercase, trimmed | User's email address |
-| `passwordHash`| String | Required | Bcrypt salted hash (hidden from JSON output) |
-| `createdAt` | Date | Auto-timestamp | Creation timestamp |
-| `updatedAt` | Date | Auto-timestamp | Last update timestamp |
+### 1. User Schema (`models/User.js`)
+```javascript
+{
+  username: { type: String, required: true, trim: true, minlength: 2 },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  passwordHash: { type: String, required: true },
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+*Note: Includes a schema-level `toJSON` transform deleting `passwordHash` during serialization.*
 
-### 2. Job Application Model (`JobApplication.js`)
-| Field | Type | Attributes | Description |
-| :--- | :--- | :--- | :--- |
-| `_id` | ObjectId | Auto-generated | Unique application identifier |
-| `userId` | ObjectId | Required, ref: `User`, indexed | ID of the user who owns this application |
-| `company` | String | Required, trimmed | Company name (e.g. Google, Infosys) |
-| `jobRole` | String | Required, trimmed | Role applied for (e.g. SDE-1) |
-| `status` | String | Required, Enum | Status stage (see 7 valid enum values) |
-| `appliedDate`| Date | Default: `Date.now` | Date when the application was submitted |
-| `jobUrl` | String | Optional, trimmed | URL link to job posting |
-| `notes` | String | Optional, trimmed | Notes, interview details, prep material |
-| `createdAt` | Date | Auto-timestamp | Record creation timestamp |
-| `updatedAt` | Date | Auto-timestamp | Record last updated timestamp |
+### 2. Job Application Schema (`models/JobApplication.js`)
+```javascript
+{
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  company: { type: String, required: true, trim: true },
+  jobRole: { type: String, required: true, trim: true },
+  status: {
+    type: String,
+    required: true,
+    enum: ['Applied', 'Resume Shortlisted', 'OA Done', 'Interview', 'Waiting for Result', 'Selected', 'Rejected'],
+    default: 'Applied'
+  },
+  appliedDate: { type: Date, default: Date.now },
+  jobUrl: { type: String, trim: true, default: '' },
+  notes: { type: String, trim: true, default: '' },
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### ⚡ Indexing Strategy
+```javascript
+jobApplicationSchema.index({ userId: 1, createdAt: -1 });
+```
+- **Rationale**: All application reads, searches, and deletes filter strictly on `userId`. Creating a compound index on `{ userId: 1, createdAt: -1 }` reduces query complexity from an $O(N)$ collection scan to an $O(\log N)$ B-tree index lookup.
 
 ---
 
-## 🔌 API Documentation
+## 🔌 API Reference
 
 Base URL: `http://localhost:5000/api`
 
-### Authentication Endpoints
+### Auth Endpoints
+| Method | Endpoint | Access | Description | Status Code |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/auth/register` | Public | Register new user, hash password, return token | `201 Created` |
+| `POST` | `/auth/login` | Public | Verify credentials, return signed JWT | `200 OK` |
+| `GET` | `/auth/me` | Protected | Fetch current user profile | `200 OK` |
 
-#### 1. Register User
-- **Method & Route**: `POST /auth/register`
-- **Auth Required**: No
-- **Request Body**:
-  ```json
-  {
-    "username": "Dev User",
-    "email": "dev@example.com",
-    "password": "Password123"
-  }
-  ```
-- **Success Response (201 Created)**:
-  ```json
-  {
-    "message": "User registered successfully",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
-    "user": {
-      "_id": "64f1a2b3c4d5e6f7a8b9c0d1",
-      "username": "Dev User",
-      "email": "dev@example.com"
-    }
-  }
-  ```
-- **Common Errors**:
-  - `400 Bad Request`: Missing fields, invalid email format, password < 6 characters, or email already registered.
-
-#### 2. User Login
-- **Method & Route**: `POST /auth/login`
-- **Auth Required**: No
-- **Request Body**:
-  ```json
-  {
-    "email": "dev@example.com",
-    "password": "Password123"
-  }
-  ```
-- **Success Response (200 OK)**:
-  ```json
-  {
-    "message": "Login successful",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
-    "user": {
-      "_id": "64f1a2b3c4d5e6f7a8b9c0d1",
-      "username": "Dev User",
-      "email": "dev@example.com"
-    }
-  }
-  ```
-- **Common Errors**:
-  - `400 Bad Request`: Missing email or password.
-  - `401 Unauthorized`: Invalid email or password.
+### Application Endpoints (Protected: `Authorization: Bearer <JWT>`)
+| Method | Endpoint | Query / Body | Description | Status Code |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/applications` | `{ company, jobRole, status, appliedDate, jobUrl, notes }` | Create application under authenticated `userId` | `201 Created` |
+| `GET` | `/applications` | `?search=google&status=Interview` | Get all applications matching filters for logged-in user | `200 OK` |
+| `GET` | `/applications/:id` | `req.params.id` | Get single application (verifies `_id` & `userId`) | `200 OK` |
+| `PUT` | `/applications/:id` | `{ status, notes, ... }` | Update application (verifies `_id` & `userId`) | `200 OK` |
+| `DELETE`| `/applications/:id`| `req.params.id` | Delete application (verifies `_id` & `userId`) | `200 OK` |
 
 ---
 
-### Job Application Endpoints (Protected by JWT)
+## 🔒 Security & Authorization Architecture
 
-All requests to `/applications` must provide the JWT header:
-`Authorization: Bearer <token>`
-
-#### 3. Create Application
-- **Method & Route**: `POST /applications`
-- **Auth Required**: Yes
-- **Request Body**:
-  ```json
-  {
-    "company": "Infosys",
-    "jobRole": "Software Engineer",
-    "status": "Applied",
-    "appliedDate": "2026-09-01",
-    "jobUrl": "https://careers.infosys.com/job/123",
-    "notes": "Applied through campus placement"
-  }
-  ```
-- **Success Response (201 Created)**: Returns the newly created application object with assigned `userId`.
-- **Common Errors**:
-  - `400 Bad Request`: Missing company or jobRole, or invalid status enum.
-  - `401 Unauthorized`: Token missing or invalid.
-
-#### 4. Get All Applications (with Search & Status Filter)
-- **Method & Route**: `GET /applications`
-- **Query Parameters**:
-  - `search` (optional): Filter company by substring (e.g. `?search=info`)
-  - `status` (optional): Filter by exact status (e.g. `?status=Interview`)
-  - Combined: `?search=google&status=Interview`
-- **Success Response (200 OK)**: Array of application objects owned by the authenticated user.
-
-#### 5. Get Single Application
-- **Method & Route**: `GET /applications/:id`
-- **Auth Required**: Yes
-- **Success Response (200 OK)**: Application object.
-- **Common Errors**:
-  - `404 Not Found`: Application does not exist or belongs to another user.
-
-#### 6. Update Application
-- **Method & Route**: `PUT /applications/:id`
-- **Auth Required**: Yes
-- **Request Body**: JSON object containing fields to update (`company`, `jobRole`, `status`, `appliedDate`, `jobUrl`, `notes`).
-- **Success Response (200 OK)**: Updated application object.
-- **Common Errors**:
-  - `400 Bad Request`: Empty company/role or invalid status enum.
-  - `404 Not Found`: Application does not exist or belongs to another user.
-
-#### 7. Delete Application
-- **Method & Route**: `DELETE /applications/:id`
-- **Auth Required**: Yes
-- **Success Response (200 OK)**:
-  ```json
-  {
-    "message": "Application deleted successfully"
-  }
-  ```
-- **Common Errors**:
-  - `404 Not Found`: Application does not exist or belongs to another user.
+1. **IDOR (Insecure Direct Object Reference) Prevention**:
+   The backend never trusts a `userId` supplied in the request body or parameters. Instead, `authMiddleware` extracts `userId` from the cryptographically verified JWT payload and attaches it to `req.user.userId`.
+2. **Dual-Key Isolation (`_id` + `userId`)**:
+   Every mutation and single-resource lookup executes:
+   ```javascript
+   JobApplication.findOne({ _id: req.params.id, userId: req.user.userId });
+   ```
+   If User B requests an application ID belonging to User A, MongoDB returns `null`, and the API responds with `404 Not Found` (preventing both data leakage and ID enumeration).
+3. **Regex Injection (ReDoS) Sanitization**:
+   User input for search queries is escaped before being converted into regex:
+   ```javascript
+   const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+   query.company = { $regex: escapedSearch, $options: 'i' };
+   ```
 
 ---
 
-## ⚙️ Environment Variables
+## 💻 Local Setup & MongoDB Compass
 
-Copy `backend/.env.example` to `backend/.env` and adjust the variables:
+### 1. Prerequisites
+- **Node.js** (v18+)
+- **MongoDB** running locally on port 27017 (or MongoDB Compass)
 
-```env
-PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/job_tracker_db
-JWT_SECRET=your_secret_here
-```
-
----
-
-## 🚀 Setup & Installation
-
-### Prerequisites
-- Node.js (v18+)
-- MongoDB running locally on port 27017 (or MongoDB Atlas connection URI)
-
-### 1. Clone & Setup Backend
+### 2. Backend Setup
 ```bash
 cd backend
 npm install
-# Ensure .env is configured with your JWT_SECRET and MONGO_URI
+
+# Configure your environment variables
+# backend/.env
+PORT=5000
+MONGO_URI=mongodb://127.0.0.1:27017/job_tracker_db
+JWT_SECRET=your_secret_key_here
+
 npm start
-# Or for live development:
+# Or for hot-reload development:
 npm run dev
 ```
 
-### 2. Setup Frontend
+### 3. Frontend Setup
 ```bash
 cd ../frontend
 npm install
 npm run dev
 ```
-Open your browser at `http://localhost:3000`.
+Open **`http://localhost:3000`** in your browser.
 
-### 3. Run Automated Backend Test Suite
-With the backend server running:
+### 4. Viewing Data in MongoDB Compass
+1. Open **MongoDB Compass**.
+2. Connect to the local URI:
+   ```text
+   mongodb://127.0.0.1:27017
+   ```
+3. In the sidebar, select **`job_tracker_db`** to view the `users` and `jobapplications` collections in real time.
+
+---
+
+## 🧪 Automated Verification Suite
+
+An automated end-to-end integration test suite is included in `backend/test-api.js`.
+
+Run tests with:
 ```bash
 cd backend
 node test-api.js
 ```
 
+### Tested Test Matrix:
+- [x] User registration & password hashing validation
+- [x] Duplicate email registration rejection (`400`)
+- [x] Login authentication with valid & invalid credentials
+- [x] Rejection of unauthenticated requests (`401`)
+- [x] Application CRUD operations
+- [x] Enum validation on status field (`400`)
+- [x] Case-insensitive search by company name
+- [x] Status filter accuracy
+- [x] **Two-User Ownership Isolation**: User 2 receives `404` when attempting to `GET`, `PUT`, or `DELETE` User 1's records.
+
 ---
 
-## 🔒 Security Summary
+## 🧠 Engineering Decisions & Technical Interview Defense
 
-1. **Password Hashing**: `bcryptjs` with 10 salt rounds transforms plaintext passwords before saving.
-2. **JWT Authentication**: Protected routes require valid signed tokens in the `Authorization` header.
-3. **Strict Ownership Scoping**: Every database lookup, update, and deletion is constrained with `{ _id: id, userId: req.user.userId }`.
-4. **Data Sanitization**: MongoDB queries escape regex inputs; Mongoose schemas enforce types and enum constraints.
+*This section details the architectural choices, trade-offs, and technical rationale behind this codebase.*
+
+### 1. Why Stateless JWTs over Stateful Sessions?
+- **Decision**: Used JSON Web Tokens stored in `localStorage` sent via `Authorization: Bearer <token>`.
+- **Rationale**: JWTs are stateless; the server verifies the cryptographic signature with `JWT_SECRET` without needing a central session store (e.g. Redis). This keeps the backend lightweight, horizontally scalable, and decoupled from frontend clients.
+
+### 2. Why Bcrypt with 10 Salt Rounds?
+- **Decision**: `bcryptjs` with salt round factor `10`.
+- **Rationale**: Plain MD5/SHA256 hashes are vulnerable to rainbow table attacks. Bcrypt incorporates a random salt and adaptive key derivation function (Eksblowfish). 10 rounds strike an optimal balance (~100ms per hash) between cryptographic resilience and server latency.
+
+### 3. Why Compute Metrics on the Frontend instead of a Dedicated Aggregation API?
+- **Decision**: Metrics (`Total`, `In Progress`, `Interviews`, `Selected`, `Rejected`) are calculated in React via `useMemo` from the fetched `applications` array.
+- **Rationale**: Since the user's active job application set is already fetched for the dashboard view ($N \approx 50-200$), running simple array filters in memory takes $<1\text{ms}$ on the client and eliminates unnecessary round-trip database aggregation requests ($O(1)$ network overhead).
+
+### 4. How is Debouncing Implemented for the Search Input?
+- **Decision**: Search query input triggers a `250ms` debounced `useEffect`.
+- **Rationale**: Prevents firing an HTTP query on every keystroke, reducing network traffic and database load while maintaining a fluid user experience.
+
+### 5. Why Return `404 Not Found` Instead of `403 Forbidden` for Unauthorized Access?
+- **Decision**: Queries combining `_id` and `userId` return `404` when no document is found.
+- **Rationale**: Returning `403 Forbidden` confirms to an attacker that the targeted resource ID exists on the server (information leakage). Returning `404 Not Found` treats foreign resources as non-existent.
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
