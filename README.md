@@ -7,49 +7,49 @@
 [![JWT Auth](https://img.shields.io/badge/Auth-JWT%20%7C%20Bcrypt-000000?logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A placement-ready, full-stack **Job Application Tracker** built with the **MERN** stack (MongoDB, Express.js, React.js, Node.js). Designed for software engineering candidates and placement applicants to organize job applications, track progress across interview stages, filter/search by company, and ensure complete data isolation with secure JWT authentication and password hashing.
+A modern, full-stack **Job Application Tracker** built with the **MERN** stack (MongoDB, Express.js, React.js, Node.js). Designed for software engineering candidates to organize applications, monitor progress across recruitment stages, perform instant debounced searches and stage filtering, and ensure rigorous data isolation with stateless JWT authentication and bcrypt password hashing.
 
 ---
 
 ## 📑 Table of Contents
 
-- [Key Features](#-key-features)
+- [Features Overview](#-features-overview)
 - [System Architecture](#-system-architecture)
-- [Database Design & Indexing](#-database-design--indexing)
-- [API Reference](#-api-reference)
-- [Security & Authorization Architecture](#-security--authorization-architecture)
-- [Local Setup & MongoDB Compass](#-local-setup--mongodb-compass)
-- [Automated Verification Suite](#-automated-verification-suite)
-- [Engineering Decisions & Technical Interview Defense](#-engineering-decisions--technical-interview-defense)
+- [Database Design & Performance Indexing](#-database-design--performance-indexing)
+- [API Reference & Contracts](#-api-reference--contracts)
+- [Security & Authorization Design](#-security--authorization-design)
+- [Engineering Decisions & Trade-offs](#-engineering-decisions--trade-offs)
+- [Getting Started & Local Setup](#-getting-started--local-setup)
+- [Automated Integration Testing](#-automated-integration-testing)
 
 ---
 
-## 🌟 Key Features
+## 🌟 Features Overview
 
-### 1. User Authentication & Session Security
-- **Registration & Login**: Secure account creation and credential validation.
-- **Bcrypt Password Hashing**: Passwords are salted (10 rounds) and hashed before persistence; plain text passwords are never stored.
-- **Stateless JWT Authorization**: Signed JSON Web Tokens with 7-day validity.
-- **Sensitive Field Protection**: `passwordHash` is stripped at the schema layer and never exposed in JSON responses.
+### 1. User Authentication & Session Management
+- **Stateless JWT Authorization**: Cryptographically signed JSON Web Tokens (7-day TTL) for distributed authentication.
+- **Bcrypt Password Hashing**: Passwords salted (10 rounds) and hashed before persistence; plain text passwords are never stored.
+- **Data Protection**: Schema-level transformation automatically strips `passwordHash` from all JSON responses.
+- **Protected Routing**: Client-side route guards combined with server-side middleware verification.
 
-### 2. Job Application Lifecycle (CRUD)
-- **Create**: Log company, role, stage, application date, job URL, and prep notes.
-- **Read**: Fetch applications strictly isolated to the authenticated user.
-- **Update**: Transition applications across interview stages and modify records.
-- **Delete**: Remove applications with confirmation dialogs.
-
-### 3. Real-time Search & Multi-Stage Filtering
-- **Regex Company Search**: Case-insensitive instant search on company names.
-- **Status Filter**: Direct filtering matching all 7 standard recruitment stages:
+### 2. Job Application Lifecycle Management (CRUD)
+- **Comprehensive Tracking**: Log company, role, stage, application date, external posting URL, and interview notes.
+- **Strict Data Ownership**: Every query is filtered through authenticated user identity (`req.user.userId`).
+- **Flexible Stage Transitions**: Move seamlessly between any recruitment stage:
   `Applied` • `Resume Shortlisted` • `OA Done` • `Interview` • `Waiting for Result` • `Selected` • `Rejected`
+- **Immediate State Synchronization**: UI updates immediately upon create, update, or delete operations.
 
-### 4. Client-Side Metrics Dashboard
-- Dynamic status counters computed directly from frontend state:
-  - **Total Applied**
+### 3. Search & Multi-Stage Filtering
+- **Debounced Search**: Case-insensitive regex search on company names optimized to minimize network calls.
+- **Stage Filtering**: Filter applications by recruitment stage directly from the dashboard.
+
+### 4. Client-Side Analytics Dashboard
+- Dynamic overview metrics calculated in memory from application state:
+  - **Total Applications**
   - **In Progress** (`Applied`, `Resume Shortlisted`, `OA Done`, `Waiting for Result`)
-  - **Interviews**
+  - **Interviews Scheduled**
   - **Offers / Selected**
-  - **Rejected**
+  - **Rejections**
 
 ---
 
@@ -58,7 +58,7 @@ A placement-ready, full-stack **Job Application Tracker** built with the **MERN*
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    React.js Frontend (Vite)                     │
-│  - Dashboard & Metrics Cards (useMemo computed)                 │
+│  - Analytics Overview (useMemo computed)                        │
 │  - Debounced Company Search & Status Dropdown                   │
 │  - Application Cards & Modal Form (Add / Edit)                  │
 │  - Centralized api.js (Auto Bearer Token Injection)             │
@@ -83,7 +83,7 @@ A placement-ready, full-stack **Job Application Tracker** built with the **MERN*
 
 ---
 
-## 🗄️ Database Design & Indexing
+## 🗄️ Database Design & Performance Indexing
 
 ### 1. User Schema (`models/User.js`)
 ```javascript
@@ -95,7 +95,6 @@ A placement-ready, full-stack **Job Application Tracker** built with the **MERN*
   updatedAt: Date
 }
 ```
-*Note: Includes a schema-level `toJSON` transform deleting `passwordHash` during serialization.*
 
 ### 2. Job Application Schema (`models/JobApplication.js`)
 ```javascript
@@ -117,19 +116,19 @@ A placement-ready, full-stack **Job Application Tracker** built with the **MERN*
 }
 ```
 
-### ⚡ Indexing Strategy
+### ⚡ Database Indexing Rationale
 ```javascript
 jobApplicationSchema.index({ userId: 1, createdAt: -1 });
 ```
-- **Rationale**: All application reads, searches, and deletes filter strictly on `userId`. Creating a compound index on `{ userId: 1, createdAt: -1 }` reduces query complexity from an $O(N)$ collection scan to an $O(\log N)$ B-tree index lookup.
+- **Rationale**: Since all queries scope to the authenticated user, indexing on `{ userId: 1, createdAt: -1 }` avoids collection scans and optimizes query performance to an $O(\log N)$ B-tree index lookup.
 
 ---
 
-## 🔌 API Reference
+## 🔌 API Reference & Contracts
 
 Base URL: `http://localhost:5000/api`
 
-### Auth Endpoints
+### Authentication Endpoints
 | Method | Endpoint | Access | Description | Status Code |
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/auth/register` | Public | Register new user, hash password, return token | `201 Created` |
@@ -147,18 +146,18 @@ Base URL: `http://localhost:5000/api`
 
 ---
 
-## 🔒 Security & Authorization Architecture
+## 🔒 Security & Authorization Design
 
-1. **IDOR (Insecure Direct Object Reference) Prevention**:
-   The backend never trusts a `userId` supplied in the request body or parameters. Instead, `authMiddleware` extracts `userId` from the cryptographically verified JWT payload and attaches it to `req.user.userId`.
+1. **IDOR (Insecure Direct Object Reference) Mitigation**:
+   The backend never trusts a `userId` supplied by the client. Identity is resolved exclusively via `req.user.userId` from the verified JWT.
 2. **Dual-Key Isolation (`_id` + `userId`)**:
-   Every mutation and single-resource lookup executes:
+   All single-record queries and mutations execute with dual keys:
    ```javascript
    JobApplication.findOne({ _id: req.params.id, userId: req.user.userId });
    ```
-   If User B requests an application ID belonging to User A, MongoDB returns `null`, and the API responds with `404 Not Found` (preventing both data leakage and ID enumeration).
+   Cross-user requests return `404 Not Found` rather than `403 Forbidden` to prevent resource existence disclosure.
 3. **Regex Injection (ReDoS) Sanitization**:
-   User input for search queries is escaped before being converted into regex:
+   User input for search queries is escaped before conversion into MongoDB regex queries:
    ```javascript
    const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
    query.company = { $regex: escapedSearch, $options: 'i' };
@@ -166,7 +165,23 @@ Base URL: `http://localhost:5000/api`
 
 ---
 
-## 💻 Local Setup & MongoDB Compass
+## 🧠 Engineering Decisions & Trade-offs
+
+### 1. Stateless JWT vs Stateful Sessions
+- **Decision**: Implemented signed JSON Web Tokens transmitted via `Authorization: Bearer <token>`.
+- **Trade-off**: JWTs eliminate the overhead of querying a central session database (e.g., Redis) on every API call, enabling horizontal scalability and seamless decoupled architecture.
+
+### 2. Client-Side Metrics Calculation vs Server Aggregation
+- **Decision**: Dashboard overview metrics are computed client-side using `useMemo` over the fetched application state.
+- **Trade-off**: Since user application datasets are modest ($N \approx 50-200$), in-memory filtering executes in $<1\text{ms}$ on the browser, eliminating unnecessary round-trip database aggregation requests ($O(1)$ network latency).
+
+### 3. Debounced Search vs Instant Keystroke Queries
+- **Decision**: Implemented a 250ms debounce on search queries.
+- **Trade-off**: Balances instantaneous UI feel with server load, preventing unnecessary API requests during rapid typing.
+
+---
+
+## 💻 Getting Started & Local Setup
 
 ### 1. Prerequisites
 - **Node.js** (v18+)
@@ -177,14 +192,14 @@ Base URL: `http://localhost:5000/api`
 cd backend
 npm install
 
-# Configure your environment variables
+# Configure environment variables
 # backend/.env
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/job_tracker_db
 JWT_SECRET=your_secret_key_here
 
 npm start
-# Or for hot-reload development:
+# Or for live development:
 npm run dev
 ```
 
@@ -196,62 +211,33 @@ npm run dev
 ```
 Open **`http://localhost:3000`** in your browser.
 
-### 4. Viewing Data in MongoDB Compass
+### 4. Viewing Data with MongoDB Compass
 1. Open **MongoDB Compass**.
-2. Connect to the local URI:
-   ```text
-   mongodb://127.0.0.1:27017
-   ```
-3. In the sidebar, select **`job_tracker_db`** to view the `users` and `jobapplications` collections in real time.
+2. Connect to `mongodb://127.0.0.1:27017`.
+3. Locate **`job_tracker_db`** to inspect the `users` and `jobapplications` collections.
 
 ---
 
-## 🧪 Automated Verification Suite
+## 🧪 Automated Integration Testing
 
-An automated end-to-end integration test suite is included in `backend/test-api.js`.
+An automated end-to-end integration test suite is located in `backend/test-api.js`.
 
-Run tests with:
+To run the verification suite:
 ```bash
 cd backend
 node test-api.js
 ```
 
-### Tested Test Matrix:
-- [x] User registration & password hashing validation
+### Verified Test Suite Capabilities:
+- [x] User registration & password hashing verification
 - [x] Duplicate email registration rejection (`400`)
 - [x] Login authentication with valid & invalid credentials
 - [x] Rejection of unauthenticated requests (`401`)
 - [x] Application CRUD operations
 - [x] Enum validation on status field (`400`)
-- [x] Case-insensitive search by company name
+- [x] Case-insensitive regex search
 - [x] Status filter accuracy
-- [x] **Two-User Ownership Isolation**: User 2 receives `404` when attempting to `GET`, `PUT`, or `DELETE` User 1's records.
-
----
-
-## 🧠 Engineering Decisions & Technical Interview Defense
-
-*This section details the architectural choices, trade-offs, and technical rationale behind this codebase.*
-
-### 1. Why Stateless JWTs over Stateful Sessions?
-- **Decision**: Used JSON Web Tokens stored in `localStorage` sent via `Authorization: Bearer <token>`.
-- **Rationale**: JWTs are stateless; the server verifies the cryptographic signature with `JWT_SECRET` without needing a central session store (e.g. Redis). This keeps the backend lightweight, horizontally scalable, and decoupled from frontend clients.
-
-### 2. Why Bcrypt with 10 Salt Rounds?
-- **Decision**: `bcryptjs` with salt round factor `10`.
-- **Rationale**: Plain MD5/SHA256 hashes are vulnerable to rainbow table attacks. Bcrypt incorporates a random salt and adaptive key derivation function (Eksblowfish). 10 rounds strike an optimal balance (~100ms per hash) between cryptographic resilience and server latency.
-
-### 3. Why Compute Metrics on the Frontend instead of a Dedicated Aggregation API?
-- **Decision**: Metrics (`Total`, `In Progress`, `Interviews`, `Selected`, `Rejected`) are calculated in React via `useMemo` from the fetched `applications` array.
-- **Rationale**: Since the user's active job application set is already fetched for the dashboard view ($N \approx 50-200$), running simple array filters in memory takes $<1\text{ms}$ on the client and eliminates unnecessary round-trip database aggregation requests ($O(1)$ network overhead).
-
-### 4. How is Debouncing Implemented for the Search Input?
-- **Decision**: Search query input triggers a `250ms` debounced `useEffect`.
-- **Rationale**: Prevents firing an HTTP query on every keystroke, reducing network traffic and database load while maintaining a fluid user experience.
-
-### 5. Why Return `404 Not Found` Instead of `403 Forbidden` for Unauthorized Access?
-- **Decision**: Queries combining `_id` and `userId` return `404` when no document is found.
-- **Rationale**: Returning `403 Forbidden` confirms to an attacker that the targeted resource ID exists on the server (information leakage). Returning `404 Not Found` treats foreign resources as non-existent.
+- [x] **Multi-User Ownership Isolation**: Verifies User 2 cannot access, update, or delete User 1's applications.
 
 ---
 
