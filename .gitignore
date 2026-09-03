@@ -20,3 +20,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Personal Notes & Interview Prep (Local only)
+INTERVIEW_PREP.md
+*.prep.md
